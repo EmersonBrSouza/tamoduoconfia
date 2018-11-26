@@ -6,34 +6,34 @@
 #define NUMTRY 5
 
 char connectMessage[] = { 0x10 // Connect
-			, 0x0C + 0x04 // Remaining Length
-			, 0x00 // 0
-			, 0x06 // 6
-			, 0x4d // M
-			, 0x51 // Q
-			, 0x49 // I
-			, 0x73 // S
-			, 0x64 // D
-			, 0x70 // P
-			, 0x03 // Protocol version = 3
-			, 0x02 // Clean session only
-			, 0x00 // Keepalive MSB
-			, 0x3c // Keepaliave LSB = 60
-			, 0x00 // String length MSB
-			, 0x02 // String length LSB = 2
-			, 0x4d // M
-			, 0x70 // P .. Let's say client ID = MP
-	};
-char publishMessage []= { 0x30 // Publish with QOS 0
-			, 0x05 + 0x05 // Remaining length
-			, 0x00 // MSB
-			, 0x03 // 3 bytes of topic
-			, 0x61 // a
-			, 0x2F ///
-			, 0x62 // b (a/b) is the topic
-			, 0x48, 0x45, 0x4c, 0x4c, 0x4f // HELLO is the message
-	};
-
+		, 0x0C + 0x04 // Remaining Length
+				, 0x00 // 0
+		, 0x06 // 6
+		, 0x4d // M
+		, 0x51 // Q
+		, 0x49 // I
+		, 0x73 // S
+		, 0x64 // D
+		, 0x70 // P
+		, 0x03 // Protocol version = 3
+		, 0x02 // Clean session only
+		, 0x00 // Keepalive MSB
+		, 0x3c // Keepaliave LSB = 60
+		, 0x00 // String length MSB
+		, 0x02 // String length LSB = 2
+		, 0x4d // M
+		, 0x70 // P .. Let's say client ID = MP
+		};
+char publishMessage[] = { 0x30 // Publish with QOS 0
+		, 0x05 + 0x05 // Remaining length
+				, 0x00 // MSB
+		, 0x03 // 3 bytes of topic
+		, 0x61 // a
+		, 0x2F ///
+		, 0x62 // b (a/b) is the topic
+		, 0x48, 0x45, 0x4c, 0x4c, 0x4f // HELLO is the message
+		};
+char disconnectMessage[] = {0xE0, 0x00};
 
 void delay(int a) { //bounce
 	volatile int i = 0;
@@ -67,13 +67,14 @@ void sendCommand(char * cmd) {
 	char a;
 	int control = 1;
 
-	while(control){
-		if(IORD_ALTERA_AVALON_UART_STATUS(ESP_BASE)&(1<<6)){
+	while (control) {
+		if (IORD_ALTERA_AVALON_UART_STATUS(ESP_BASE) & (1 << 6)) {
 			control = 0;
 			do {
 				a = IORD_ALTERA_AVALON_UART_RXDATA(ESP_BASE);
 				IOWR_ALTERA_AVALON_UART_TXDATA(RS232_BASE, a);
-			} while (a != 'K');
+			} while (a != 'K'
+					&& (IORD_ALTERA_AVALON_UART_STATUS(ESP_BASE) & (1 << 6)));
 
 		}
 	}
@@ -95,8 +96,8 @@ void espConnect(char * ssid, char * pass) {
 	sendCommand(net);
 }
 
-void espOpenTCPConnect(char * ip, char * port){
-	char net [] = "AT+CIPSTART=\"TCP\",\"";
+void espOpenTCPConnect(char * ip, char * port) {
+	char net[80] = "AT+CIPSTART=\"TCP\",\"";
 	strcat(net, ip);
 	strcat(net, "\",");
 	strcat(net, port);
@@ -104,40 +105,47 @@ void espOpenTCPConnect(char * ip, char * port){
 	sendCommand(net);
 }
 
-void espTCPSend(char * message){
-
+void espTCPSend(char * message, int size) {
+	char t[3];
 	//enviando tamanho da mensagem
-	int i = strlen(message);
-	char t[2];
-	if(i<10){
-		t [0]= i+48;
-	}else{
-		t[0] = i/10+48;
-		t[1] = i%10+48;
+	if (size < 10) {
+		t[0] = size + 48;
+		t[1] = '\0';
+	} else {
+		t[0] = size / 10 + 48;
+		t[1] = size % 10 + 48;
 	}
-	char net [] = "AT+CIPSEND=";
+	t[2] = '\0';
+	char net[23] = "AT+CIPSEND=";
 	strcat(net, t);
 	strcat(net, "\r\n");
 	sendCommand(net);
 
-	/*char net1 = "AT+CIPSEND=\"";
-	strcat(net, message);
-	strcat(net, "\"\r\n");*/
+	//enviando messagem
+	int i;
+	for (i = 0; i < size; i++) {
+		alt_putchar(message[i]);
+	}
+	sendCommand("\r\n");
 }
 
 int main() {
-	/*espTest();
-	espMode();
-	espConnect("ssid", "senha");*/
-	//espOpenTCPConnect("192.168.16.102", "1883");
-	sendCommand("AT+CIPSTART=\"TCP\",\"192.168.16.102\",1883\r\n");
+	//espTest();
+	//espMode();
+	//espConnect("ssid", "pass");
+	espOpenTCPConnect("192.168.16.102", "1883");
 
-	sendCommand("AT+CIPSEND=20\r\n");
-	int i;
-	for(i=0;i<18;i++){
-		alt_putchar(connectMessage[i]);
-	}
-	sendCommand("\r\n");
+	espTCPSend(connectMessage, sizeof(connectMessage));
+	delay(500);
+	espTCPSend(publishMessage, sizeof(publishMessage));
+	delay(500);
+	espTCPSend(disconnectMessage, sizeof(disconnectMessage));
+	//sendCommand("AT+CIPSEND=20\r\n");
+	/*int i;
+	 for(i=0;i<18;i++){
+	 alt_putchar(connectMessage[i]);
+	 }
+	 sendCommand("\r\n");*/
 	//espTCPSend(connectMessage);
 	//espOpenTCPConnect("192.168.16.102","1883");
 	//espTCPSend(publishMessage);
