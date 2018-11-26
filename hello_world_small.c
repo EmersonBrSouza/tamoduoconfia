@@ -65,13 +65,16 @@ void writeEsp(char * v) {
 void sendCommand(char * cmd) {
 	alt_putstr(cmd);
 	char a;
+	int control = 1;
 
-	while(1){
+	while(control){
 		if(IORD_ALTERA_AVALON_UART_STATUS(ESP_BASE)&(1<<6)){
+			control = 0;
 			do {
 				a = IORD_ALTERA_AVALON_UART_RXDATA(ESP_BASE);
 				IOWR_ALTERA_AVALON_UART_TXDATA(RS232_BASE, a);
 			} while (a != 'K');
+
 		}
 	}
 
@@ -95,9 +98,9 @@ void espConnect(char * ssid, char * pass) {
 void espOpenTCPConnect(char * ip, char * port){
 	char net [] = "AT+CIPSTART=\"TCP\",\"";
 	strcat(net, ip);
-	strcat(net, "\",\"");
+	strcat(net, "\",");
 	strcat(net, port);
-	strcat(net, "\"\r\n");
+	strcat(net, "\r\n");
 	sendCommand(net);
 }
 
@@ -112,20 +115,30 @@ void espTCPSend(char * message){
 		t[0] = i/10+48;
 		t[1] = i%10+48;
 	}
-	char net [] = "AT+CIPSEND=\"";
+	char net [] = "AT+CIPSEND=";
 	strcat(net, t);
-	strcat(net, "\"\r\n");
+	strcat(net, "\r\n");
 	sendCommand(net);
 
-	char net1 = "AT+CIPSEND=\"";
+	/*char net1 = "AT+CIPSEND=\"";
 	strcat(net, message);
-	strcat(net, "\"\r\n");
+	strcat(net, "\"\r\n");*/
 }
 
 int main() {
-	espTest();
+	/*espTest();
 	espMode();
-	espConnect("ssid", "pass");
-	espOpenTCPConnect("ip","port");
-	espTCPSend(publishMessage);
+	espConnect("lima", "@senha363");*/
+	//espOpenTCPConnect("192.168.16.102", "1883");
+	sendCommand("AT+CIPSTART=\"TCP\",\"192.168.16.102\",1883\r\n");
+
+	sendCommand("AT+CIPSEND=20\r\n");
+	int i;
+	for(i=0;i<18;i++){
+		alt_putchar(connectMessage[i]);
+	}
+	sendCommand("\r\n");
+	//espTCPSend(connectMessage);
+	//espOpenTCPConnect("192.168.16.102","1883");
+	//espTCPSend(publishMessage);
 }
