@@ -128,7 +128,7 @@ void espTCPSend(char * message){
 int main() {
 	/*espTest();
 	espMode();
-	espConnect("lima", "@senha363");*/
+	espConnect("ssid", "senha");*/
 	//espOpenTCPConnect("192.168.16.102", "1883");
 	sendCommand("AT+CIPSTART=\"TCP\",\"192.168.16.102\",1883\r\n");
 
